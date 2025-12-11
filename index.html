@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>3반 부스 (Firebase 연동)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      background: #f5f5f5;
+      color: #222;
+    }
+
+    /* 상단 바 */
+    .topbar {
+      width: 100%;
+      padding: 12px 20px;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .topbar-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .topbar-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .topbar-sub {
+      font-size: 0.85rem;
+      color: #555;
+    }
+
+    .topbar-btns button {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      margin-left: 8px;
+      font-size: 0.95rem;
+    }
+
+    .btn-start { background: #007bff; color: #fff; }
+    .btn-stop  { background: #dc3545; color: #fff; }
+
+    /* 페이지 컨테이너 */
+    .page {
+      display: none;
+      min-height: calc(100vh - 60px);
+    }
+    .page.active {
+      display: block;
+    }
+
+    /* 첫 화면 중앙 버튼 */
+    #page-home {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    .home-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .home-sub {
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+    .home-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .big-btn {
+      padding: 16px 20px;
+      font-size: 1.05rem;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .big-btn.primary {
+      background: #007bff;
+      color: #fff;
+    }
+    .big-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+
+    /* 주문하기 화면 7:3 레이아웃 */
+    .layout {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+
+    .left {
+      width: 30%;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .right {
+      width: 70%;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    /* 주문 카드 */
+    .order-card {
+      background: #f9f9f9;
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+
+    .order-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .order-items {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      white-space: pre-line;
+    }
+
+    .order-total {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .order-status-text {
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .btn-done {
+      background: #28a745;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-right: 6px;
+    }
+    .btn-pickup {
+      background: #ff9800;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    /* 메뉴 그룹 제목 */
+    .menu-group-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin: 16px 0 8px;
+    }
+
+    /* 메뉴 카드 3열 */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .menu-btn {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      text-align: center;
+      border: 1px solid #ddd;
+      transition: 0.15s;
+      font-size: 0.95rem;
+      user-select: none;
+    }
+
+    .menu-btn:hover {
+      background: #f0f4ff;
+      transform: translateY(-2px);
+    }
+
+    .menu-name { font-weight: 600; margin-bottom: 4px; }
+    .menu-price { color: #555; font-size: 0.9rem; }
+
+    /* 현재 주문 */
+    .current-order-box {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .order-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .qty-btn {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #666;
+      cursor: pointer;
+      background: #fff;
+      margin: 0 4px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      font-size: 1.1rem;
+      margin-top: 12px;
+    }
+
+    /* 주문확인(주방) 화면 */
+    .kitchen-wrap {
+      padding: 12px;
+    }
+
+    /* 매출 확인 화면 */
+    .sales-wrap {
+      padding: 16px;
+    }
+
+    .sales-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    .sales-table th, .sales-table td {
+      border-bottom: 1px solid #ddd;
+      padding: 6px 4px;
+      font-size: 0.95rem;
+    }
+    .sales-table th {
+      text-align: left;
+      background: #f0f0f0;
+    }
+    .sales-total-row {
+      font-weight: 700;
+      border-top: 2px solid #000;
+    }
+
+    .btn-back-home {
+      margin-top: 16px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    /* 공통 모달 배경 */
+    .modal-bg {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .modal {
+      width: 85%;
+      max-width: 450px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .modal-btn-row {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .modal-btn {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .modal-btn.primary {
+      background: #007bff;
+      color: #fff;
+    }
+    .modal-btn.cancel {
+      background: #ccc;
+      color: #222;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 상단바 -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">축제 POS 시스템</div>
+      <div class="topbar-sub">
+        <span id="sessionStatusLabel">장사가 시작되지 않았습니다.</span>
+        · 경과 시간 <span id="elapsedTime">00:00:00</span>
+      </div>
+    </div>
+    <div class="topbar-btns" id="topbarButtons" style="display:none;">
+      <button class="btn-start" id="btnStart">장사 시작</button>
+      <button class="btn-stop" id="btnStop">장사 종료</button>
+    </div>
+  </div>
+
+  <!-- 첫 화면 -->
+  <div id="page-home" class="page active">
+    <div class="home-title">기기 역할 선택</div>
+    <div class="home-sub">이 기기에서 사용할 화면을 선택하세요.</div>
+    <div class="home-buttons">
+      <button class="big-btn primary" id="btnHomeOrder">주문하기</button>
+      <button class="big-btn" id="btnHomeCheck">주문확인</button>
+    </div>
+  </div>
+
+  <!-- 주문하기 화면 -->
+  <div id="page-order" class="page">
+    <div class="layout">
+      <!-- 왼쪽: 준비 완료 & 픽업 대기 -->
+      <div class="left">
+        <h3>준비 완료 · 픽업 대기 주문</h3>
+        <div id="leftReadyOrders"></div>
+      </div>
+
+      <!-- 오른쪽: 메뉴 & 현재 주문 -->
+      <div class="right">
+        <!-- 메뉴 그룹: 불닭컵+토핑 -->
+        <div class="menu-group-title">불닭컵 & 토핑</div>
+        <div class="menu-grid" id="menuGroup1"></div>
+
+        <!-- 메뉴 그룹: 음료 -->
+        <div class="menu-group-title">음료</div>
+        <div class="menu-grid" id="menuGroup2"></div>
+
+        <!-- 기타 메뉴 -->
+        <div class="menu-group-title">기타</div>
+        <div class="menu-grid" id="menuGroup3"></div>
+
+        <!-- 현재 주문 -->
+        <div class="current-order-box">
+          <div style="font-weight:700; margin-bottom:10px;">
+            현재 주문 (주문번호 <span id="currentOrderNo">1</span>번)
+          </div>
+          <div id="currentOrderList"></div>
+          <div style="margin-top:10px; font-size:1.1rem; font-weight:700;">
+            총 금액: <span id="currentTotal">0</span>원
+          </div>
+
+          <!-- ▼ 추가: 현재 주문 상태 + 픽업 버튼 -->
+          <div id="currentOrderStatusBlock" style="margin-top:8px; font-size:0.9rem; display:none;">
+            주문 상태:
+            <span id="currentOrderStatusText">-</span>
+            <button class="btn-pickup" id="btnCurrentPickup" style="margin-left:8px;" disabled>
+              픽업 완료
+            </button>
+          </div>
+          <!-- ▲ 추가 끝 -->
+
+          <button class="btn-submit" id="btnSubmitOrder">주문 등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 주문확인(주방) 화면 -->
+  <div id="page-check" class="page">
+    <div class="kitchen-wrap">
+      <h2>주문 확인 화면 (주방)</h2>
+      <div style="font-size:0.9rem; color:#555; margin-bottom:8px;">
+        주문이 들어오면 아래에 표시됩니다.
+        상태를 보고 "음식 준비 완료" 또는 "픽업 완료"를 눌러주세요.
+      </div>
+      <div id="kitchenOrders"></div>
+    </div>
+  </div>
+
+  <!-- 매출 확인 화면 -->
+  <div id="page-sales" class="page">
+    <div class="sales-wrap">
+      <h2>매출 확인</h2>
+      <div id="salesSummaryText" style="margin-bottom:8px;"></div>
+      <table class="sales-table" id="salesTable">
+        <thead>
+          <tr>
+            <th>메뉴</th>
+            <th>수량</th>
+            <th>매출액</th>
+          </tr>
+        </thead>
+        <tbody id="salesTbody"></tbody>
+        <tfoot>
+          <tr class="sales-total-row">
+            <td>총 매출액</td>
+            <td id="salesTotalQty"></td>
+            <td id="salesTotalAmount"></td>
+          </tr>
+        </tfoot>
+      </table>
+      <button class="btn-back-home" id="btnBackHome">처음 화면으로 이동</button>
+    </div>
+  </div>
+
+  <!-- 장사 시작/종료 확인 모달 -->
+  <div class="modal-bg" id="confirmModalBg">
+    <div class="modal">
+      <div class="modal-title" id="confirmTitle"></div>
+      <div id="confirmMessage"></div>
+      <div class="modal-btn-row">
+        <button class="modal-btn cancel" id="btnConfirmNo">아니오</button>
+        <button class="modal-btn primary" id="btnConfirmYes">예</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase 호환(compat) SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <!-- 앱 로직 -->
+  <script>
+    /* =========================
+       0. 페이지 전환 / 기본 상태
+       ========================= */
+
+    const pages = {
+      home:   document.getElementById("page-home"),
+      order:  document.getElementById("page-order"),
+      check:  document.getElementById("page-check"),
+      sales:  document.getElementById("page-sales"),
+    };
+    const topbarButtons      = document.getElementById("topbarButtons");
+    const sessionStatusLabel = document.getElementById("sessionStatusLabel");
+    const elapsedTimeSpan    = document.getElementById("elapsedTime");
+    const currentOrderNoSpan = document.getElementById("currentOrderNo");
+
+    function showPage(key) {
+      Object.values(pages).forEach(p => p.classList.remove("active"));
+      pages[key].classList.add("active");
+      if (key === "order") {
+        topbarButtons.style.display = "flex";
+      } else {
+        topbarButtons.style.display = "none";
+      }
+    }
+
+    // 첫 화면 버튼 → 화면 전환
+    document.getElementById("btnHomeOrder").addEventListener("click", () => showPage("order"));
+    document.getElementById("btnHomeCheck").addEventListener("click", () => showPage("check"));
+    document.getElementById("btnBackHome").addEventListener("click", () => showPage("home"));
+
+    // 세션/타이머용 변수
+    let isActive        = false;
+    let startedAt       = null;
+    let nextOrderNumber = 1;
+    let timerInterval   = null;
+
+    function formatTime(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      const pad = (x) => String(x).padStart(2, "0");
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      if (!startedAt || !isActive) {
+        elapsedTimeSpan.textContent = "00:00:00";
+        return;
+      }
+      function tick() {
+        const now = Date.now();
+        const diff = now - startedAt;
+        elapsedTimeSpan.textContent = formatTime(diff);
+      }
+      tick();
+      timerInterval = setInterval(tick, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    // 현재 주문
+    let currentOrder = {}; // { name: {price, qty} }
+
+    // 마지막 등록한 주문 상태 표시용
+    const currentOrderStatusBlock = document.getElementById("currentOrderStatusBlock");
+    const currentOrderStatusText  = document.getElementById("currentOrderStatusText");
+    const btnCurrentPickup        = document.getElementById("btnCurrentPickup");
+    let lastOrderId     = null;
+    let lastOrderStatus = null;
+
+    /* =========================
+       1. Firebase 초기화
+       ========================= */
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD1nf0_M1hO6DLEbJds-_dDM_AjGiwxv8E",
+      authDomain: "school-festival-pos.firebaseapp.com",
+      databaseURL: "https://school-festival-pos-default-rtdb.firebaseio.com",
+      projectId: "school-festival-pos",
+      storageBucket: "school-festival-pos.firebasestorage.app",
+      messagingSenderId: "885210376876",
+      appId: "1:885210376876:web:9daa3653213cd26916cd09",
+      measurementId: "G-H99PQRC48F"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const sessionRef = db.ref("session");
+    const ordersRef  = db.ref("orders");
+
+    /* =========================
+       2. 메뉴 데이터 & 렌더링
+       ========================= */
+
+    const menuGroup1 = [
+      {name:"불닭 컵", price:1500},
+      {name:"불닭 까르보 컵", price:1500},
+      {name:"불닭(할인)", price:1000},
+      {name:"까르보 불닭(할인)", price:1000},
+      {name:"치즈", price:500},
+      {name:"핫바", price:500},
+      {name:"콘", price:500},
+      {name:"마요네즈", price:500},
+    ];
+    const menuGroup2 = [
+      {name:"콜라", price:1000},
+      {name:"음료(할인)", price:500},
+      {name:"사이다", price:1000},
+      {name:"쿨피스 복숭아", price:1000},
+      {name:"쿨피스 파인애플", price:1000},
+    ];
+    const menuGroup3 = [
+      {name:"무학시그널 여고소개팅", price:500},
+      {name:"퍼스널컬러", price:1000},
+      {name:"500원 할인", price:-500},
+      {name:"은우픽", price:3500},
+      {name:"승주쌤픽", price:3500},
+      {name:"토핑폭탄 세트", price:3500},
+      {name:"치즈폭탄 세트", price:2500},
+      {name:"지성픽", price:4000},
+      {name:"다은쌤픽", price:3500},
+      {name:"영기쌤픽", price:3000},
+      {name:"박승주쌤픽", price:2500},
+      {name:"정의쌤픽", price:2500},
+    ];
+
+    function renderMenu(containerId, items) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "menu-btn";
+        div.innerHTML = `
+          <div class="menu-name">${item.name}</div>
+          <div class="menu-price">${item.price}원</div>
+        `;
+        div.addEventListener("click", () => {
+          if (!isActive) {
+            alert("장사를 시작한 후 주문을 받아주세요.");
+            return;
+          }
+          if (!currentOrder[item.name]) {
+            currentOrder[item.name] = { price: item.price, qty: 1 };
+          } else {
+            currentOrder[item.name].qty++;
+          }
+          renderCurrentOrder();
+        });
+        container.appendChild(div);
+      });
+    }
+
+    renderMenu("menuGroup1", menuGroup1);
+    renderMenu("menuGroup2", menuGroup2);
+    renderMenu("menuGroup3", menuGroup3);
+
+    function renderCurrentOrder() {
+      const list = document.getElementById("currentOrderList");
+      list.innerHTML = "";
+      let total = 0;
+
+      Object.entries(currentOrder).forEach(([name, item]) => {
+        total += item.price * item.qty;
+        const row = document.createElement("div");
+        row.className = "order-row";
+
+        const left = document.createElement("div");
+        left.textContent = `${name} (${item.price}원)`;
+
+        const right = document.createElement("div");
+        const btnMinus = document.createElement("button");
+        btnMinus.className = "qty-btn";
+        btnMinus.textContent = "-";
+        btnMinus.addEventListener("click", () => {
+          item.qty--;
+          if (item.qty <= 0) delete currentOrder[name];
+          renderCurrentOrder();
+        });
+        const qty = document.createElement("span");
+        qty.textContent = item.qty;
+        const btnPlus = document.createElement("button");
+        btnPlus.className = "qty-btn";
+        btnPlus.textContent = "+";
+        btnPlus.addEventListener("click", () => {
+          item.qty++;
+          renderCurrentOrder();
+        });
+
+        right.appendChild(btnMinus);
+        right.appendChild(qty);
+        right.appendChild(btnPlus);
+
+        row.appendChild(left);
+        row.appendChild(right);
+        list.appendChild(row);
+      });
+
+      document.getElementById("currentTotal").textContent = total;
+    }
+
+    /* =========================
+       3. 세션 상태 실시간
+       ========================= */
+
+    sessionRef.on("value", (snap) => {
+      const data = snap.val();
+      if (!data) {
+        isActive = false;
+        startedAt = null;
+        nextOrderNumber = 1;
+        sessionStatusLabel.textContent = "장사가 시작되지 않았습니다.";
+        currentOrderNoSpan.textContent = 1;
+        stopTimer();
+        elapsedTimeSpan.textContent = "00:00:00";
+        return;
+      }
+
+      isActive        = !!data.active;
+      startedAt       = data.startedAt || null;
+      nextOrderNumber = data.currentOrderNumber ?? 1;
+
+      if (isActive) {
+        sessionStatusLabel.textContent = `장사 중입니다. 다음 주문번호: ${nextOrderNumber}번`;
+        currentOrderNoSpan.textContent = nextOrderNumber;
+        startTimer();
+      } else {
+        sessionStatusLabel.textContent = "장사가 종료된 상태입니다.";
+        stopTimer();
+      }
+    });
+
+    /* =========================
+       4. 주문 목록 실시간
+       ========================= */
+
+    ordersRef.on("value", (snap) => {
+      const data = snap.val() || {};
+      const all = Object.entries(data).map(([id, o]) => ({ id, ...o }));
+
+      // 주방 화면: picked 제외한 모든 주문 표시 (조리중 + 픽업 대기)
+      const notPicked = all
+        .filter(o => o.status !== "picked")
+        .sort((a,b) => a.orderNumber - b.orderNumber);
+      renderKitchen(notPicked);
+
+      // 주문하기 화면 왼쪽: 픽업 대기만
+      const ready = all
+        .filter(o => o.status === "ready")
+        .sort((a,b) => a.orderNumber - b.orderNumber);
+      renderReadyLeft(ready);
+    });
+
+    function renderKitchen(orders) {
+      const container = document.getElementById("kitchenOrders");
+      container.innerHTML = "";
+
+      if (orders.length === 0) {
+        const p = document.createElement("p");
+        p.textContent = "대기 중인 주문이 없습니다.";
+        p.style.fontSize = "0.9rem";
+        p.style.color = "#555";
+        container.appendChild(p);
+        return;
+      }
+
+      orders.forEach(order => {
+        const div = document.createElement("div");
+        div.className = "order-card";
+
+        const itemsText = Object.entries(order.items || {})
+          .map(([name, it]) => `${name} x ${it.qty}`)
+          .join("\n");
+
+        const title = document.createElement("div");
+        title.className = "order-title";
+        title.textContent = `주문번호 ${order.orderNumber}번`;
+
+        const itemsEl = document.createElement("div");
+        itemsEl.className = "order-items";
+        itemsEl.innerText = itemsText;
+
+        const totalEl = document.createElement("div");
+        totalEl.className = "order-total";
+        totalEl.textContent = `총 ${order.total}원`;
+
+        const statusEl = document.createElement("div");
+        statusEl.className = "order-status-text";
+        if (order.status === "waiting") {
+          statusEl.textContent = "상태: 조리중";
+        } else if (order.status === "ready") {
+          statusEl.textContent = "상태: 픽업 대기중";
+        }
+
+        const btnWrap = document.createElement("div");
+
+        if (order.status === "waiting") {
+          const btnDone = document.createElement("button");
+          btnDone.className = "btn-done";
+          btnDone.textContent = "음식 준비 완료";
+          btnDone.addEventListener("click", () => {
+            db.ref("orders/" + order.id).update({ status: "ready" });
+          });
+          btnWrap.appendChild(btnDone);
+        }
+
+        if (order.status === "ready") {
+          const btnPickup = document.createElement("button");
+          btnPickup.className = "btn-pickup";
+          btnPickup.textContent = "픽업 완료";
+          btnPickup.addEventListener("click", () => {
+            db.ref("orders/" + order.id).update({ status: "picked" });
+          });
+          btnWrap.appendChild(btnPickup);
+        }
+
+        div.appendChild(title);
+        div.appendChild(itemsEl);
+        div.appendChild(totalEl);
+        div.appendChild(statusEl);
+        div.appendChild(btnWrap);
+        container.appendChild(div);
+      });
+    }
+
+    function renderReadyLeft(orders) {
+      const container = document.getElementById("leftReadyOrders");
+      container.innerHTML = "";
+
+      if (orders.length === 0) {
+        const p = document.createElement("p");
+        p.textContent = "픽업 대기 중인 주문이 없습니다.";
+        p.style.fontSize = "0.9rem";
+        p.style.color = "#555";
+        container.appendChild(p);
+        return;
+      }
+
+      orders.forEach(order => {
+        const div = document.createElement("div");
+        div.className = "order-card";
+
+        const title = document.createElement("div");
+        title.className = "order-title";
+        title.textContent = `주문번호 ${order.orderNumber}번 준비 완료!`;
+
+        const info = document.createElement("div");
+        info.className = "order-items";
+        info.textContent = "주문번호 " + order.orderNumber + "번 픽업 대기중";
+
+        const btn = document.createElement("button");
+        btn.className = "btn-pickup";
+        btn.textContent = "픽업 완료";
+        btn.addEventListener("click", () => {
+          db.ref("orders/" + order.id).update({ status: "picked" });
+        });
+
+        div.appendChild(title);
+        div.appendChild(info);
+        div.appendChild(btn);
+        container.appendChild(div);
+      });
+    }
+
+    /* =========================
+       5. 장사 시작/종료 모달
+       ========================= */
+
+    const confirmModalBg   = document.getElementById("confirmModalBg");
+    const confirmTitleEl   = document.getElementById("confirmTitle");
+    const confirmMessageEl = document.getElementById("confirmMessage");
+    const btnConfirmNo     = document.getElementById("btnConfirmNo");
+    const btnConfirmYes    = document.getElementById("btnConfirmYes");
+    let confirmCallback    = null;
+
+    function openConfirm(title, message, onYes) {
+      confirmTitleEl.textContent   = title;
+      confirmMessageEl.textContent = message;
+      confirmCallback              = onYes;
+      confirmModalBg.style.display = "flex";
+    }
+
+    btnConfirmNo.addEventListener("click", () => {
+      confirmModalBg.style.display = "none";
+      confirmCallback = null;
+    });
+
+    btnConfirmYes.addEventListener("click", async () => {
+      confirmModalBg.style.display = "none";
+      if (confirmCallback) await confirmCallback();
+      confirmCallback = null;
+    });
+
+    /* =========================
+       6. 장사 시작 / 종료
+       ========================= */
+
+    document.getElementById("btnStart").addEventListener("click", () => {
+      openConfirm(
+        "장사 시작",
+        "장사를 시작하겠습니까? (이전 주문 기록은 초기화됩니다.)",
+        async () => {
+          await sessionRef.set({
+            active: true,
+            currentOrderNumber: 1,
+            startedAt: Date.now()
+          });
+          await ordersRef.set(null);
+          currentOrder = {};
+          renderCurrentOrder();
+
+          // 상태 패널 초기화
+          if (lastOrderId) {
+            db.ref("orders/" + lastOrderId).off();
+            lastOrderId = null;
+          }
+          currentOrderStatusBlock.style.display = "none";
+          currentOrderStatusText.textContent = "-";
+          btnCurrentPickup.disabled = true;
+
+          alert("장사를 시작했습니다.");
+        }
+      );
+    });
+
+    document.getElementById("btnStop").addEventListener("click", () => {
+      openConfirm(
+        "장사 종료",
+        "정말 장사를 종료하시겠습니까?",
+        async () => {
+          await sessionRef.update({ active: false });
+          alert("장사가 종료되었습니다!");
+          await showSalesPage();
+        }
+      );
+    });
+
+    /* =========================
+       7. 주문 등록
+       ========================= */
+
+    document.getElementById("btnSubmitOrder").addEventListener("click", async () => {
+      if (!isActive) {
+        alert("장사를 시작한 후 주문을 받아주세요.");
+        return;
+      }
+      const entries = Object.entries(currentOrder);
+      if (entries.length === 0) {
+        alert("주문할 메뉴가 없습니다.");
+        return;
+      }
+
+      const sessSnap = await sessionRef.once("value");
+      const sess = sessSnap.val();
+      if (!sess || !sess.active) {
+        alert("세션 정보가 없습니다. 장사 시작을 다시 눌러주세요.");
+        return;
+      }
+      const orderNumber = sess.currentOrderNumber ?? 1;
+
+      let total = 0;
+      const itemsForDb = {};
+      entries.forEach(([name, item]) => {
+        total += item.price * item.qty;
+        itemsForDb[name] = { price: item.price, qty: item.qty };
+      });
+
+      const newRef = ordersRef.push();
+      await newRef.set({
+        orderNumber,
+        total,
+        items: itemsForDb,
+        status: "waiting",
+        createdAt: Date.now()
+      });
+
+      await sessionRef.update({ currentOrderNumber: orderNumber + 1 });
+
+      currentOrder = {};
+      renderCurrentOrder();
+      alert(`주문번호 ${orderNumber}번을 등록했습니다.`);
+
+      // 마지막 주문 상태 감시 설정
+      attachCurrentOrderListener(newRef.key, orderNumber);
+    });
+
+    function attachCurrentOrderListener(orderId, orderNumber) {
+      // 이전 리스너 제거
+      if (lastOrderId) {
+        db.ref("orders/" + lastOrderId).off();
+      }
+      lastOrderId = orderId;
+      currentOrderNoSpan.textContent = orderNumber;
+      currentOrderStatusBlock.style.display = "block";
+      currentOrderStatusText.textContent = "조리중";
+      btnCurrentPickup.disabled = true;
+
+      db.ref("orders/" + orderId).on("value", (snap) => {
+        const order = snap.val();
+        if (!order) {
+          currentOrderStatusText.textContent = "-";
+          btnCurrentPickup.disabled = true;
+          return;
+        }
+        lastOrderStatus = order.status;
+        if (order.status === "waiting") {
+          currentOrderStatusText.textContent = "조리중";
+          btnCurrentPickup.disabled = true;
+        } else if (order.status === "ready") {
+          currentOrderStatusText.textContent = "픽업 대기중";
+          btnCurrentPickup.disabled = false;
+        } else if (order.status === "picked") {
+          currentOrderStatusText.textContent = "픽업 완료";
+          btnCurrentPickup.disabled = true;
+        }
+      });
+
+      btnCurrentPickup.onclick = () => {
+        if (!lastOrderId) return;
+        if (lastOrderStatus !== "ready") {
+          alert("현재 주문이 아직 픽업 대기 상태가 아닙니다.");
+          return;
+        }
+        db.ref("orders/" + lastOrderId).update({ status: "picked" });
+      };
+    }
+
+    /* =========================
+       8. 매출 확인
+       ========================= */
+
+    async function showSalesPage() {
+      const snap = await ordersRef.once("value");
+      const data = snap.val() || {};
+
+      let totalSales = 0;
+      let totalQty   = 0;
+      const salesByMenu = {};
+
+      Object.values(data).forEach(order => {
+        totalSales += order.total || 0;
+        const items = order.items || {};
+        Object.entries(items).forEach(([name, item]) => {
+          if (!salesByMenu[name]) salesByMenu[name] = { qty: 0, revenue: 0 };
+          salesByMenu[name].qty     += item.qty;
+          salesByMenu[name].revenue += item.qty * item.price;
+          totalQty += item.qty;
+        });
+      });
+
+      const summaryText = document.getElementById("salesSummaryText");
+      summaryText.textContent = `총 주문 건수: ${Object.keys(data).length}건`;
+
+      const tbody = document.getElementById("salesTbody");
+      tbody.innerHTML = "";
+
+      Object.entries(salesByMenu).forEach(([name, info]) => {
+        const tr    = document.createElement("tr");
+        const tdN   = document.createElement("td");
+        const tdQ   = document.createElement("td");
+        const tdR   = document.createElement("td");
+        tdN.textContent = name;
+        tdQ.textContent = info.qty;
+        tdR.textContent = info.revenue + "원";
+        tr.appendChild(tdN);
+        tr.appendChild(tdQ);
+        tr.appendChild(tdR);
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("salesTotalQty").textContent    = totalQty;
+      document.getElementById("salesTotalAmount").textContent = totalSales + "원";
+
+      showPage("sales");
+    }
+  </script>
+</body>
+</html>
